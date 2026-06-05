@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Broiler.DateTime</RootNamespace>
+    <AssemblyName>Broiler.DateTime</AssemblyName>
+    <PackageId>Broiler.DateTime</PackageId>
+
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <Description>
+      Broiler.DateTime is a small library for ISO-8601 / RFC-3339-like date-time values that
+      reach beyond the .NET DateTime/DateTimeOffset year range, including ISO expanded years
+      (e.g. +010000) and negative / astronomical years (e.g. -000001). Uses the proleptic
+      Gregorian calendar with astronomical year numbering and fixed UTC offsets only.
+    </Description>
+    <PackageTags>iso8601;rfc3339;datetime;date;time;calendar;gregorian</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Broiler.DateTime.Tests" />
+  </ItemGroup>
+
+</Project>

@@ -748,5 +748,50 @@ public sealed class ExtendedIsoDateTime
             nanosecond, offset);
     }
 
+    /// <summary>
+    /// Returns this value as a number of milliseconds since 1970-01-01T00:00:00Z — the
+    /// ECMAScript <c>Date</c> time value. A value with an unspecified offset is treated as UTC.
+    /// </summary>
+    /// <remarks>
+    /// The result is a <see cref="double"/> to mirror the ECMAScript time value, which represents
+    /// every integer millisecond exactly within ±2^53 (well beyond the ±8.64×10^15 ms that
+    /// <c>Date</c> itself permits). Sub-millisecond precision is truncated toward negative infinity,
+    /// so the result is always a whole number of milliseconds. Unlike
+    /// <see cref="System.DateTimeOffset.ToUnixTimeMilliseconds"/>, the full year range is supported.
+    /// </remarks>
+    public double ToUnixTimeMilliseconds()
+    {
+        (long days, long nanoOfDay) = ToUtcInstant();
+        return days * 86_400_000.0 + nanoOfDay / 1_000_000L;
+    }
+
+    /// <summary>
+    /// Creates a UTC <see cref="ExtendedIsoDateTime"/> (offset <c>Z</c>) from a number of
+    /// milliseconds since 1970-01-01T00:00:00Z — the ECMAScript <c>Date</c> time value.
+    /// </summary>
+    /// <param name="milliseconds">Milliseconds since the Unix epoch. Must be a finite number.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="milliseconds"/> is <see cref="double.NaN"/> or infinite.
+    /// </exception>
+    public static ExtendedIsoDateTime FromUnixTimeMilliseconds(double milliseconds)
+    {
+        if (double.IsNaN(milliseconds) || double.IsInfinity(milliseconds))
+            throw new ArgumentOutOfRangeException(nameof(milliseconds), milliseconds,
+                "The Unix time must be a finite number of milliseconds.");
+
+        double dayCount = System.Math.Floor(milliseconds / 86_400_000.0);
+        long days = (long)dayCount;
+        long msOfDay = (long)(milliseconds - dayCount * 86_400_000.0);
+
+        (long year, int month, int day) = CivilFromDays(days);
+
+        int hour = (int)(msOfDay / 3_600_000);
+        int minute = (int)(msOfDay / 60_000 % 60);
+        int second = (int)(msOfDay / 1_000 % 60);
+        int nanosecond = (int)(msOfDay % 1_000) * 1_000_000;
+
+        return new ExtendedIsoDateTime(year, month, day, hour, minute, second, nanosecond, TimeSpan.Zero);
+    }
+
     #endregion
 }

@@ -99,6 +99,22 @@ var fromDto = ExtendedIsoDateTime.FromDateTimeOffset(DateTimeOffset.UtcNow);
 var fromDt  = ExtendedIsoDateTime.FromDateTime(DateTime.UtcNow); // Utc -> Z
 ```
 
+### Unix / ECMAScript time value
+
+`ToUnixTimeMilliseconds` / `FromUnixTimeMilliseconds` convert to and from the number of
+milliseconds since `1970-01-01T00:00:00Z` — the ECMAScript `Date` time value. They use
+`double` (not `long` like the BCL) so the value matches a JavaScript `Date` exactly, and
+they span the **full year range** rather than `DateTimeOffset`'s 1–9999 window. A value with
+an unspecified offset is treated as UTC; `FromUnixTimeMilliseconds` produces a `Z` value.
+
+```csharp
+ExtendedIsoDateTime.Parse("1970-01-01T00:00:00Z").ToUnixTimeMilliseconds(); // 0
+
+// ECMAScript Date extremes round-trip through the expanded-year forms
+ExtendedIsoDateTime.FromUnixTimeMilliseconds(8.64e15).ToStringIso();  // +275760-09-13T00:00:00Z
+ExtendedIsoDateTime.FromUnixTimeMilliseconds(-8.64e15).ToStringIso(); // -271821-04-20T00:00:00Z
+```
+
 ### JSON (System.Text.Json)
 
 The type is annotated with `[JsonConverter(typeof(ExtendedIsoDateTimeJsonConverter))]`, so it

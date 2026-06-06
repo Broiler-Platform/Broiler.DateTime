@@ -7,7 +7,7 @@ the .NET `DateTime` / `DateTimeOffset` year range** — including ISO *expanded*
 It is intentionally minimal: the proleptic Gregorian calendar, astronomical year numbering, and
 **fixed UTC offsets only**. No time-zone database, no locale-specific calendars, no leap seconds.
 
-- **Target framework:** .NET 8.0+
+- **Target framework:** .NET 10.0
 - **License:** [Apache-2.0](LICENSE)
 - **Core type:** `Broiler.DateTime.ExtendedIsoDateTime`
 

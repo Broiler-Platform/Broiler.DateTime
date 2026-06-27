@@ -7,6 +7,11 @@ the .NET `DateTime` / `DateTimeOffset` year range** — including ISO *expanded*
 It is intentionally minimal: the proleptic Gregorian calendar, astronomical year numbering, and
 **fixed UTC offsets only**. No time-zone database, no locale-specific calendars, no leap seconds.
 
+> **Preview status:** This is unstable, AI-assisted first-preview software. Date/time
+> parsing errors can propagate into security and data-integrity decisions, so callers
+> should validate behavior for their own domain. The component is **not human-approved
+> for preview use** while [HUMAN_REVIEW.md](HUMAN_REVIEW.md) remains `PENDING`.
+
 - **Target framework:** .NET 10.0
 - **License:** [Apache-2.0](LICENSE)
 - **Core type:** `Broiler.DateTime.ExtendedIsoDateTime`
@@ -230,4 +235,6 @@ tests/Broiler.DateTime.Tests/    # xUnit test suite
 
 ## License
 
-Licensed under the [Apache License 2.0](LICENSE).
+Licensed under the [Apache License 2.0](LICENSE), which provides the software on an
+“AS IS” basis without warranties or conditions. A human review applies only to the exact
+commit and scope recorded in [HUMAN_REVIEW.md](HUMAN_REVIEW.md).

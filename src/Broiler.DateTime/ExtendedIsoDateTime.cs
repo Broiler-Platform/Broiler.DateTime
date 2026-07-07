@@ -38,7 +38,7 @@ public sealed class ExtendedIsoDateTime
     private const long NanosecondsPerDay = 86_400L * NanosecondsPerSecond;
     private const long TicksPerNanosecondDivisor = 100L; // 1 tick == 100 ns
 
-    private static readonly int[] DaysInMonthCommon = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+    private static readonly int[] DaysInMonthCommon = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
     // Day number of 0001-01-01 in the "days since 1970-01-01" system used by the civil algorithms.
     private static readonly long DayNumberOfYear0001 = DaysFromCivil(1, 1, 1);
@@ -779,7 +779,7 @@ public sealed class ExtendedIsoDateTime
             throw new ArgumentOutOfRangeException(nameof(milliseconds), milliseconds,
                 "The Unix time must be a finite number of milliseconds.");
 
-        double dayCount = System.Math.Floor(milliseconds / 86_400_000.0);
+        double dayCount = Math.Floor(milliseconds / 86_400_000.0);
         long days = (long)dayCount;
         long msOfDay = (long)(milliseconds - dayCount * 86_400_000.0);
 

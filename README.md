@@ -9,8 +9,9 @@ It is intentionally minimal: the proleptic Gregorian calendar, astronomical year
 
 > **Preview status:** This is unstable, AI-assisted first-preview software. Date/time
 > parsing errors can propagate into security and data-integrity decisions, so callers
-> should validate behavior for their own domain. The component is **not human-approved
-> for preview use** while [HUMAN_REVIEW.md](HUMAN_REVIEW.md) remains `PENDING`.
+> should validate behavior for their own domain. Human-review approval is
+> revision-scoped; consult [HUMAN_REVIEW.md](HUMAN_REVIEW.md) for the reviewed revision
+> and conditions before describing the current checkout as approved.
 
 - **Target framework:** .NET 10.0
 - **License:** [Apache-2.0](LICENSE)

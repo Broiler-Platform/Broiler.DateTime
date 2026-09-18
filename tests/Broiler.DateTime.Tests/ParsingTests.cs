@@ -112,4 +112,43 @@ public class ParsingTests
     {
         Assert.Throws<FormatException>(() => ExtendedIsoDateTime.Parse("nope"));
     }
+
+    [Fact]
+    public void TryParse_from_char_span()
+    {
+        ReadOnlySpan<char> span = "2025-06-05T14:30:00Z".AsSpan();
+        Assert.True(ExtendedIsoDateTime.TryParse(span, out var value));
+        Assert.NotNull(value);
+        Assert.Equal(2025, value!.Year);
+        Assert.Equal(TimeSpan.Zero, value.Offset);
+    }
+
+    [Fact]
+    public void Parse_from_char_span()
+    {
+        var v = ExtendedIsoDateTime.Parse("2025-06-05T14:30:00Z".AsSpan());
+        Assert.Equal(2025, v.Year);
+    }
+
+    [Fact]
+    public void TryParse_from_utf8_span()
+    {
+        byte[] utf8 = System.Text.Encoding.UTF8.GetBytes("2025-06-05T14:30:00Z");
+        Assert.True(ExtendedIsoDateTime.TryParse(utf8, null, out var value));
+        Assert.NotNull(value);
+        Assert.Equal(2025, value!.Year);
+    }
+
+    [Fact]
+    public void Generic_span_parsable_interface_works()
+    {
+        static T ParseGeneric<T>(string input) where T : ISpanParsable<T>
+        {
+            return T.Parse(input.AsSpan(), null);
+        }
+
+        var result = ParseGeneric<ExtendedIsoDateTime>("2025-06-05T14:30:00Z");
+        Assert.Equal(2025, result.Year);
+    }
 }
+

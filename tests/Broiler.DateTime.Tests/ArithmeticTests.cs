@@ -104,6 +104,51 @@ public class ArithmeticTests
     }
 
     [Fact]
+    public void Difference_supports_spans_greater_than_292_years()
+    {
+        // 500 years difference previously overflowed long when converting days to nanoseconds.
+        var a = ExtendedIsoDateTime.Parse("2500-01-01T00:00:00Z");
+        var b = ExtendedIsoDateTime.Parse("2000-01-01T00:00:00Z");
+        TimeSpan diff = a.Difference(b);
+        Assert.True(diff > TimeSpan.Zero);
+        Assert.Equal(a.DaysBetween(b), (long)diff.TotalDays);
+
+        // Reverse difference is symmetric
+        TimeSpan reverse = b.Difference(a);
+        Assert.Equal(-diff, reverse);
+    }
+
+    [Fact]
+    public void Difference_supports_large_span_within_timespan_limits()
+    {
+        // 20,000 years fits comfortably within TimeSpan (~29,227 years).
+        var a = ExtendedIsoDateTime.Parse("+020000-01-01T00:00:00Z");
+        var b = ExtendedIsoDateTime.Parse("0000-01-01T00:00:00Z");
+        TimeSpan diff = a.Difference(b);
+        Assert.True(diff > TimeSpan.Zero);
+        Assert.Equal(a.DaysBetween(b), (long)diff.TotalDays);
+    }
+
+    [Fact]
+    public void Difference_throws_when_exceeding_timespan_limits()
+    {
+        // 50,000 years exceeds TimeSpan.MaxValue (~29,227 years).
+        var a = ExtendedIsoDateTime.Parse("+050000-01-01T00:00:00Z");
+        var b = ExtendedIsoDateTime.Parse("0000-01-01T00:00:00Z");
+        Assert.Throws<OverflowException>(() => a.Difference(b));
+    }
+
+    [Fact]
+    public void Difference_sub_tick_fractional_nanoseconds_truncated()
+    {
+        var a = new ExtendedIsoDateTime(2025, 1, 1, 0, 0, 0, 150, TimeSpan.Zero);
+        var b = new ExtendedIsoDateTime(2025, 1, 1, 0, 0, 0, 0, TimeSpan.Zero);
+        // 150 ns = 1 tick (100 ns) + 50 ns (truncated)
+        Assert.Equal(1, a.Difference(b).Ticks);
+        Assert.Equal(-1, b.Difference(a).Ticks);
+    }
+
+    [Fact]
     public void DaysBetween_counts_calendar_days()
     {
         var a = new ExtendedIsoDateTime(2025, 3, 1);
@@ -111,3 +156,4 @@ public class ArithmeticTests
         Assert.Equal(59, a.DaysBetween(b)); // Jan(31) + Feb(28)
     }
 }
+

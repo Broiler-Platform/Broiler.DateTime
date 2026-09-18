@@ -20,6 +20,13 @@ public sealed class ExtendedIsoDateTimeJsonConverter : JsonConverter<ExtendedIso
             throw new JsonException(
                 $"Expected a string when reading {nameof(ExtendedIsoDateTime)} but found {reader.TokenType}.");
 
+        if (!reader.HasValueSequence)
+        {
+            ReadOnlySpan<byte> span = reader.ValueSpan;
+            if (ExtendedIsoDateTime.TryParse(span, null, out ExtendedIsoDateTime? parsed))
+                return parsed;
+        }
+
         string? text = reader.GetString();
         if (!ExtendedIsoDateTime.TryParse(text, out ExtendedIsoDateTime? value))
             throw new JsonException($"'{text}' is not a valid ISO-8601 extended date-time.");
@@ -28,7 +35,7 @@ public sealed class ExtendedIsoDateTimeJsonConverter : JsonConverter<ExtendedIso
     }
 
     /// <inheritdoc />
-    public override void Write(Utf8JsonWriter writer, ExtendedIsoDateTime value, JsonSerializerOptions options)
+    public override void Write(Utf8JsonWriter writer, ExtendedIsoDateTime? value, JsonSerializerOptions options)
     {
         if (value is null)
         {
@@ -36,6 +43,14 @@ public sealed class ExtendedIsoDateTimeJsonConverter : JsonConverter<ExtendedIso
             return;
         }
 
-        writer.WriteStringValue(value.ToStringIso());
+        Span<char> buffer = stackalloc char[64];
+        if (value.TryFormat(buffer, out int charsWritten))
+        {
+            writer.WriteStringValue(buffer[..charsWritten]);
+        }
+        else
+        {
+            writer.WriteStringValue(value.ToStringIso());
+        }
     }
 }

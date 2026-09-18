@@ -75,4 +75,44 @@ public class FormattingTests
         var v2 = ExtendedIsoDateTime.Parse("2025-06-05T14:30:00.250Z");
         Assert.Equal("2025-06-05T14:30:00.25Z", v2.ToStringIso());
     }
+
+    [Fact]
+    public void TryFormat_writes_to_char_span()
+    {
+        var v = ExtendedIsoDateTime.Parse("2025-06-05T14:30:00.123456789+02:00");
+        Span<char> buffer = stackalloc char[64];
+        Assert.True(v.TryFormat(buffer, out int written));
+        Assert.Equal("2025-06-05T14:30:00.123456789+02:00", new string(buffer[..written]));
+
+        // Returns false when buffer is too small
+        Span<char> small = stackalloc char[10];
+        Assert.False(v.TryFormat(small, out int smallWritten));
+        Assert.Equal(0, smallWritten);
+    }
+
+    [Fact]
+    public void TryFormat_writes_to_utf8_span()
+    {
+        var v = ExtendedIsoDateTime.Parse("2025-06-05T14:30:00.5Z");
+        Span<byte> buffer = stackalloc byte[64];
+        Assert.True(v.TryFormat(buffer, out int written));
+        Assert.Equal("2025-06-05T14:30:00.5Z", System.Text.Encoding.UTF8.GetString(buffer[..written]));
+    }
+
+    [Fact]
+    public void String_interpolation_formats_correctly()
+    {
+        var v = ExtendedIsoDateTime.Parse("2025-06-05T14:30:00Z");
+        string formatted = $"Time: {v}";
+        Assert.Equal("Time: 2025-06-05T14:30:00Z", formatted);
+    }
+
+    [Fact]
+    public void Long_min_value_year_formats_without_overflow()
+    {
+        var v = new ExtendedIsoDateTime(long.MinValue, 1, 1, offset: TimeSpan.Zero);
+        string str = v.ToStringIso();
+        Assert.StartsWith("-9223372036854775808-01-01T00:00:00Z", str);
+    }
 }
+

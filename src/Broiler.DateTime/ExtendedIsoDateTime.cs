@@ -1,5 +1,6 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using System.Text;
+using System.Numerics;
 using System.Text.Json.Serialization;
 
 namespace Broiler.DateTime;
@@ -30,7 +31,17 @@ namespace Broiler.DateTime;
 /// </remarks>
 [JsonConverter(typeof(ExtendedIsoDateTimeJsonConverter))]
 public sealed class ExtendedIsoDateTime
-    : IEquatable<ExtendedIsoDateTime>, IComparable<ExtendedIsoDateTime>, IComparable
+    : IEquatable<ExtendedIsoDateTime>,
+      IComparable<ExtendedIsoDateTime>,
+      IComparable,
+      IFormattable,
+      ISpanFormattable,
+      IUtf8SpanFormattable,
+      IParsable<ExtendedIsoDateTime>,
+      ISpanParsable<ExtendedIsoDateTime>,
+      IUtf8SpanParsable<ExtendedIsoDateTime>,
+      IEqualityOperators<ExtendedIsoDateTime, ExtendedIsoDateTime, bool>,
+      IComparisonOperators<ExtendedIsoDateTime, ExtendedIsoDateTime, bool>
 {
     /// <summary>Number of nanoseconds in a single second.</summary>
     public const long NanosecondsPerSecond = 1_000_000_000L;
@@ -38,7 +49,7 @@ public sealed class ExtendedIsoDateTime
     private const long NanosecondsPerDay = 86_400L * NanosecondsPerSecond;
     private const long TicksPerNanosecondDivisor = 100L; // 1 tick == 100 ns
 
-    private static readonly int[] DaysInMonthCommon = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    private static ReadOnlySpan<byte> DaysInMonthCommon => [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
     // Day number of 0001-01-01 in the "days since 1970-01-01" system used by the civil algorithms.
     private static readonly long DayNumberOfYear0001 = DaysFromCivil(1, 1, 1);
@@ -95,6 +106,49 @@ public sealed class ExtendedIsoDateTime
         int nanosecond = 0,
         TimeSpan? offset = null)
     {
+        Validate(year, month, day, hour, minute, second, nanosecond, offset);
+
+        Year = year;
+        Month = month;
+        Day = day;
+        Hour = hour;
+        Minute = minute;
+        Second = second;
+        Nanosecond = nanosecond;
+        Offset = offset;
+    }
+
+    private ExtendedIsoDateTime(
+        long year,
+        int month,
+        int day,
+        int hour,
+        int minute,
+        int second,
+        int nanosecond,
+        TimeSpan? offset,
+        bool _)
+    {
+        Year = year;
+        Month = month;
+        Day = day;
+        Hour = hour;
+        Minute = minute;
+        Second = second;
+        Nanosecond = nanosecond;
+        Offset = offset;
+    }
+
+    private static void Validate(
+        long year,
+        int month,
+        int day,
+        int hour,
+        int minute,
+        int second,
+        int nanosecond,
+        TimeSpan? offset)
+    {
         if (month is < 1 or > 12)
             throw new ArgumentOutOfRangeException(nameof(month), month, "Month must be between 1 and 12.");
 
@@ -123,15 +177,30 @@ public sealed class ExtendedIsoDateTime
                 throw new ArgumentOutOfRangeException(nameof(offset), offset,
                     "Offset must be greater than -24:00 and less than +24:00.");
         }
+    }
 
-        Year = year;
-        Month = month;
-        Day = day;
-        Hour = hour;
-        Minute = minute;
-        Second = second;
-        Nanosecond = nanosecond;
-        Offset = offset;
+    internal static bool IsValid(
+        long year,
+        int month,
+        int day,
+        int hour,
+        int minute,
+        int second,
+        int nanosecond,
+        TimeSpan? offset)
+    {
+        if (month is < 1 or > 12) return false;
+        if (day < 1 || day > DaysInMonth(year, month)) return false;
+        if (hour is < 0 or > 23) return false;
+        if (minute is < 0 or > 59) return false;
+        if (second is < 0 or > 59) return false;
+        if (nanosecond is < 0 or > 999_999_999) return false;
+        if (offset is TimeSpan o)
+        {
+            if (o.Ticks % TimeSpan.TicksPerMinute != 0) return false;
+            if (o <= TimeSpan.FromHours(-24) || o >= TimeSpan.FromHours(24)) return false;
+        }
+        return true;
     }
 
     /// <summary>
@@ -219,7 +288,7 @@ public sealed class ExtendedIsoDateTime
     public ExtendedIsoDateTime AddDays(long days)
     {
         (long y, int m, int d) = CivilFromDays(DayNumber + days);
-        return new ExtendedIsoDateTime(y, m, d, Hour, Minute, Second, Nanosecond, Offset);
+        return new ExtendedIsoDateTime(y, m, d, Hour, Minute, Second, Nanosecond, Offset, false);
     }
 
     /// <summary>
@@ -229,19 +298,22 @@ public sealed class ExtendedIsoDateTime
     /// </summary>
     public ExtendedIsoDateTime AddMonths(long months)
     {
-        long total = Year * 12 + (Month - 1) + months;
-        long q = total / 12;
-        long r = total % 12;
-        if (r < 0)
+        checked
         {
-            r += 12;
-            q -= 1;
-        }
+            long total = Year * 12 + (Month - 1) + months;
+            long q = total / 12;
+            long r = total % 12;
+            if (r < 0)
+            {
+                r += 12;
+                q -= 1;
+            }
 
-        long newYear = q;
-        int newMonth = (int)r + 1;
-        int newDay = Math.Min(Day, DaysInMonth(newYear, newMonth));
-        return new ExtendedIsoDateTime(newYear, newMonth, newDay, Hour, Minute, Second, Nanosecond, Offset);
+            long newYear = q;
+            int newMonth = (int)r + 1;
+            int newDay = Math.Min(Day, DaysInMonth(newYear, newMonth));
+            return new ExtendedIsoDateTime(newYear, newMonth, newDay, Hour, Minute, Second, Nanosecond, Offset, false);
+        }
     }
 
     /// <summary>
@@ -250,9 +322,12 @@ public sealed class ExtendedIsoDateTime
     /// </summary>
     public ExtendedIsoDateTime AddYears(long years)
     {
-        long newYear = Year + years;
-        int newDay = Math.Min(Day, DaysInMonth(newYear, Month));
-        return new ExtendedIsoDateTime(newYear, Month, newDay, Hour, Minute, Second, Nanosecond, Offset);
+        checked
+        {
+            long newYear = Year + years;
+            int newDay = Math.Min(Day, DaysInMonth(newYear, Month));
+            return new ExtendedIsoDateTime(newYear, Month, newDay, Hour, Minute, Second, Nanosecond, Offset, false);
+        }
     }
 
     /// <summary>
@@ -267,15 +342,35 @@ public sealed class ExtendedIsoDateTime
     /// <exception cref="OverflowException">The difference is too large for a <see cref="TimeSpan"/>.</exception>
     public TimeSpan Difference(ExtendedIsoDateTime other)
     {
+        if (other is null) throw new ArgumentNullException(nameof(other));
         (long aDays, long aNanos) = ToUtcInstant();
         (long bDays, long bNanos) = other.ToUtcInstant();
 
-        checked
+        if (aDays < bDays || (aDays == bDays && aNanos < bNanos))
         {
-            long dayDiff = aDays - bDays;
-            long nanoDiff = aNanos - bNanos;
-            long totalNanos = dayDiff * NanosecondsPerDay + nanoDiff;
-            return TimeSpan.FromTicks(totalNanos / TicksPerNanosecondDivisor);
+            long ticks = ComputeTicks(bDays, bNanos, aDays, aNanos);
+            return TimeSpan.FromTicks(checked(-ticks));
+        }
+        else
+        {
+            long ticks = ComputeTicks(aDays, aNanos, bDays, bNanos);
+            return TimeSpan.FromTicks(ticks);
+        }
+
+        static long ComputeTicks(long highDays, long highNanos, long lowDays, long lowNanos)
+        {
+            long dayDiff = highDays - lowDays;
+            long nanoDiff = highNanos - lowNanos;
+            if (nanoDiff < 0)
+            {
+                dayDiff--;
+                nanoDiff += NanosecondsPerDay;
+            }
+
+            checked
+            {
+                return dayDiff * TimeSpan.TicksPerDay + (nanoDiff / TicksPerNanosecondDivisor);
+            }
         }
     }
 
@@ -283,7 +378,11 @@ public sealed class ExtendedIsoDateTime
     /// Returns the whole number of calendar days between the two values' dates
     /// (<c>this - other</c>), ignoring time-of-day and offset.
     /// </summary>
-    public long DaysBetween(ExtendedIsoDateTime other) => DayNumber - other.DayNumber;
+    public long DaysBetween(ExtendedIsoDateTime other)
+    {
+        if (other is null) throw new ArgumentNullException(nameof(other));
+        return DayNumber - other.DayNumber;
+    }
 
     #endregion
 
@@ -379,19 +478,31 @@ public sealed class ExtendedIsoDateTime
 
     /// <summary>Less-than instant comparison.</summary>
     public static bool operator <(ExtendedIsoDateTime left, ExtendedIsoDateTime right)
-        => left.CompareTo(right) < 0;
+    {
+        ArgumentNullException.ThrowIfNull(left);
+        return left.CompareTo(right) < 0;
+    }
 
     /// <summary>Greater-than instant comparison.</summary>
     public static bool operator >(ExtendedIsoDateTime left, ExtendedIsoDateTime right)
-        => left.CompareTo(right) > 0;
+    {
+        ArgumentNullException.ThrowIfNull(left);
+        return left.CompareTo(right) > 0;
+    }
 
     /// <summary>Less-than-or-equal instant comparison.</summary>
     public static bool operator <=(ExtendedIsoDateTime left, ExtendedIsoDateTime right)
-        => left.CompareTo(right) <= 0;
+    {
+        ArgumentNullException.ThrowIfNull(left);
+        return left.CompareTo(right) <= 0;
+    }
 
     /// <summary>Greater-than-or-equal instant comparison.</summary>
     public static bool operator >=(ExtendedIsoDateTime left, ExtendedIsoDateTime right)
-        => left.CompareTo(right) >= 0;
+    {
+        ArgumentNullException.ThrowIfNull(left);
+        return left.CompareTo(right) >= 0;
+    }
 
     #endregion
 
@@ -435,26 +546,65 @@ public sealed class ExtendedIsoDateTime
     /// form (0000–9999) or the ISO expanded form with an explicit sign (for example <c>+010000</c>
     /// or <c>-000001</c>). The offset may be <c>Z</c>, <c>+HH:mm</c>, <c>-HH:mm</c>, or omitted.
     /// </summary>
+    /// <exception cref="ArgumentNullException"><paramref name="s"/> is null.</exception>
     /// <exception cref="FormatException">The input is not a valid extended date-time.</exception>
-    public static ExtendedIsoDateTime Parse(string text)
+    public static ExtendedIsoDateTime Parse(string s)
     {
-        if (text is null) throw new ArgumentNullException(nameof(text));
-        if (!TryParse(text, out ExtendedIsoDateTime? value))
-            throw new FormatException($"'{text}' is not a valid ISO-8601 extended date-time.");
-        return value!;
+        ArgumentNullException.ThrowIfNull(s);
+        return Parse(s.AsSpan(), null);
+    }
+
+    /// <inheritdoc cref="Parse(string)"/>
+    public static ExtendedIsoDateTime Parse(string s, IFormatProvider? provider)
+    {
+        ArgumentNullException.ThrowIfNull(s);
+        return Parse(s.AsSpan(), provider);
+    }
+
+    /// <summary>
+    /// Parses an ISO-8601 / RFC-3339 extended date-time character span.
+    /// </summary>
+    public static ExtendedIsoDateTime Parse(ReadOnlySpan<char> s, IFormatProvider? provider = null)
+    {
+        if (!TryParse(s, provider, out ExtendedIsoDateTime? value))
+            throw new FormatException($"'{s.ToString()}' is not a valid ISO-8601 extended date-time.");
+        return value;
+    }
+
+    /// <summary>
+    /// Parses an ISO-8601 / RFC-3339 extended date-time UTF-8 byte span.
+    /// </summary>
+    public static ExtendedIsoDateTime Parse(ReadOnlySpan<byte> utf8Text, IFormatProvider? provider = null)
+    {
+        if (!TryParse(utf8Text, provider, out ExtendedIsoDateTime? value))
+            throw new FormatException("The provided UTF-8 text is not a valid ISO-8601 extended date-time.");
+        return value;
     }
 
     /// <summary>
     /// Attempts to parse an ISO-8601 / RFC-3339 extended date-time string. Returns
     /// <see langword="false"/> instead of throwing on malformed or out-of-range input.
     /// </summary>
-    public static bool TryParse(string? text, out ExtendedIsoDateTime? value)
+    public static bool TryParse([NotNullWhen(true)] string? s, [MaybeNullWhen(false)] out ExtendedIsoDateTime result)
+        => TryParse(s.AsSpan(), null, out result);
+
+    /// <inheritdoc cref="TryParse(string?, out ExtendedIsoDateTime?)"/>
+    public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out ExtendedIsoDateTime result)
+        => TryParse(s.AsSpan(), provider, out result);
+
+    /// <summary>
+    /// Attempts to parse an ISO-8601 / RFC-3339 extended date-time character span.
+    /// </summary>
+    public static bool TryParse(ReadOnlySpan<char> s, [MaybeNullWhen(false)] out ExtendedIsoDateTime result)
+        => TryParse(s, null, out result);
+
+    /// <inheritdoc cref="TryParse(ReadOnlySpan{char}, out ExtendedIsoDateTime?)"/>
+    public static bool TryParse(ReadOnlySpan<char> s, IFormatProvider? provider, [MaybeNullWhen(false)] out ExtendedIsoDateTime result)
     {
-        value = null;
-        if (string.IsNullOrEmpty(text))
+        result = null;
+        if (s.IsEmpty)
             return false;
 
-        ReadOnlySpan<char> s = text.AsSpan();
         int pos = 0;
 
         // ---- Year (optional sign, then digits) ----
@@ -546,15 +696,28 @@ public sealed class ExtendedIsoDateTime
 
         if (pos != s.Length) return false;
 
-        try
-        {
-            value = new ExtendedIsoDateTime(year, month, day, hour, minute, second, nanosecond, offset);
-            return true;
-        }
-        catch (ArgumentOutOfRangeException)
-        {
+        if (!IsValid(year, month, day, hour, minute, second, nanosecond, offset))
             return false;
+
+        result = new ExtendedIsoDateTime(year, month, day, hour, minute, second, nanosecond, offset, false);
+        return true;
+    }
+
+    /// <summary>
+    /// Attempts to parse an ISO-8601 / RFC-3339 extended date-time UTF-8 byte span.
+    /// </summary>
+    public static bool TryParse(ReadOnlySpan<byte> utf8Text, IFormatProvider? provider, [MaybeNullWhen(false)] out ExtendedIsoDateTime result)
+    {
+        result = null;
+        if (utf8Text.Length is < 19 or > 64) return false;
+        Span<char> chars = stackalloc char[utf8Text.Length];
+        for (int i = 0; i < utf8Text.Length; i++)
+        {
+            byte b = utf8Text[i];
+            if (b > 127) return false;
+            chars[i] = (char)b;
         }
+        return TryParse(chars, provider, out result);
     }
 
     private static bool Expect(ReadOnlySpan<char> s, ref int pos, char expected)
@@ -589,9 +752,12 @@ public sealed class ExtendedIsoDateTime
 
     /// <summary>
     /// Formats the value using the ISO-8601 / RFC-3339 extended representation. Identical to
-    /// <see cref="ToStringIso"/>.
+    /// <see cref="ToStringIso()"/>.
     /// </summary>
     public override string ToString() => ToStringIso();
+
+    /// <inheritdoc cref="IFormattable.ToString(string?, IFormatProvider?)"/>
+    public string ToString(string? format, IFormatProvider? formatProvider) => ToStringIso();
 
     /// <summary>
     /// Formats the value as an ISO-8601 / RFC-3339 extended date-time string.
@@ -609,49 +775,206 @@ public sealed class ExtendedIsoDateTime
     /// </remarks>
     public string ToStringIso()
     {
-        var sb = new StringBuilder(32);
+        int length = GetIsoStringLength();
+        return string.Create(length, this, static (span, self) =>
+        {
+            self.TryFormat(span, out _);
+        });
+    }
+
+    /// <summary>
+    /// Attempts to format the value into the provided character span.
+    /// </summary>
+    public bool TryFormat(Span<char> destination, out int charsWritten)
+        => TryFormat(destination, out charsWritten, default, null);
+
+    /// <inheritdoc cref="ISpanFormattable.TryFormat(Span{char}, out int, ReadOnlySpan{char}, IFormatProvider?)"/>
+    public bool TryFormat(
+        Span<char> destination,
+        out int charsWritten,
+        ReadOnlySpan<char> format = default,
+        IFormatProvider? provider = null)
+    {
+        int required = GetIsoStringLength();
+        if (destination.Length < required)
+        {
+            charsWritten = 0;
+            return false;
+        }
+
+        int pos = 0;
 
         // Year
         if (Year is >= 0 and <= 9999)
         {
-            sb.Append(Year.ToString("D4", CultureInfo.InvariantCulture));
+            WriteFourDigits(destination.Slice(pos, 4), (int)Year);
+            pos += 4;
         }
         else
         {
-            sb.Append(Year < 0 ? '-' : '+');
-            long abs = Year < 0 ? -Year : Year;
-            sb.Append(abs.ToString("D6", CultureInfo.InvariantCulture));
+            destination[pos++] = Year < 0 ? '-' : '+';
+            ulong abs = Year < 0 ? (ulong)-(Year + 1) + 1 : (ulong)Year;
+            int digits = CountDigits(abs);
+            int pad = Math.Max(6, digits);
+            for (int i = pad - 1; i >= 0; i--)
+            {
+                destination[pos + i] = (char)('0' + (abs % 10));
+                abs /= 10;
+            }
+            pos += pad;
         }
 
-        sb.Append('-').Append(Month.ToString("D2", CultureInfo.InvariantCulture));
-        sb.Append('-').Append(Day.ToString("D2", CultureInfo.InvariantCulture));
-        sb.Append('T');
-        sb.Append(Hour.ToString("D2", CultureInfo.InvariantCulture));
-        sb.Append(':').Append(Minute.ToString("D2", CultureInfo.InvariantCulture));
-        sb.Append(':').Append(Second.ToString("D2", CultureInfo.InvariantCulture));
+        destination[pos++] = '-';
+        WriteTwoDigits(destination.Slice(pos, 2), Month);
+        pos += 2;
+
+        destination[pos++] = '-';
+        WriteTwoDigits(destination.Slice(pos, 2), Day);
+        pos += 2;
+
+        destination[pos++] = 'T';
+        WriteTwoDigits(destination.Slice(pos, 2), Hour);
+        pos += 2;
+
+        destination[pos++] = ':';
+        WriteTwoDigits(destination.Slice(pos, 2), Minute);
+        pos += 2;
+
+        destination[pos++] = ':';
+        WriteTwoDigits(destination.Slice(pos, 2), Second);
+        pos += 2;
 
         if (Nanosecond != 0)
         {
-            string frac = Nanosecond.ToString("D9", CultureInfo.InvariantCulture).TrimEnd('0');
-            sb.Append('.').Append(frac);
+            destination[pos++] = '.';
+            int ns = Nanosecond;
+            int fracDigits = 9;
+            while (fracDigits > 1 && ns % 10 == 0)
+            {
+                ns /= 10;
+                fracDigits--;
+            }
+
+            for (int i = fracDigits - 1; i >= 0; i--)
+            {
+                destination[pos + i] = (char)('0' + (ns % 10));
+                ns /= 10;
+            }
+            pos += fracDigits;
         }
 
         if (Offset is TimeSpan o)
         {
             if (o == TimeSpan.Zero)
             {
-                sb.Append('Z');
+                destination[pos++] = 'Z';
             }
             else
             {
-                sb.Append(o < TimeSpan.Zero ? '-' : '+');
+                destination[pos++] = o < TimeSpan.Zero ? '-' : '+';
                 TimeSpan abs = o.Duration();
-                sb.Append(((int)abs.TotalHours).ToString("D2", CultureInfo.InvariantCulture));
-                sb.Append(':').Append(abs.Minutes.ToString("D2", CultureInfo.InvariantCulture));
+                WriteTwoDigits(destination.Slice(pos, 2), (int)abs.TotalHours);
+                pos += 2;
+                destination[pos++] = ':';
+                WriteTwoDigits(destination.Slice(pos, 2), abs.Minutes);
+                pos += 2;
             }
         }
 
-        return sb.ToString();
+        charsWritten = pos;
+        return true;
+    }
+
+    /// <inheritdoc cref="IUtf8SpanFormattable.TryFormat(Span{byte}, out int, ReadOnlySpan{char}, IFormatProvider?)"/>
+    public bool TryFormat(
+        Span<byte> utf8Destination,
+        out int bytesWritten,
+        ReadOnlySpan<char> format = default,
+        IFormatProvider? provider = null)
+    {
+        int required = GetIsoStringLength();
+        if (utf8Destination.Length < required)
+        {
+            bytesWritten = 0;
+            return false;
+        }
+
+        Span<char> chars = stackalloc char[required];
+        if (!TryFormat(chars, out int charsWritten))
+        {
+            bytesWritten = 0;
+            return false;
+        }
+
+        for (int i = 0; i < charsWritten; i++)
+        {
+            utf8Destination[i] = (byte)chars[i];
+        }
+
+        bytesWritten = charsWritten;
+        return true;
+    }
+
+    private int GetIsoStringLength()
+    {
+        int len;
+        if (Year is >= 0 and <= 9999)
+        {
+            len = 4;
+        }
+        else
+        {
+            ulong abs = Year < 0 ? (ulong)-(Year + 1) + 1 : (ulong)Year;
+            int digits = CountDigits(abs);
+            len = 1 + Math.Max(6, digits);
+        }
+
+        len += 15; // -MM-DDTHH:mm:ss
+
+        if (Nanosecond != 0)
+        {
+            int ns = Nanosecond;
+            int fracDigits = 9;
+            while (fracDigits > 1 && ns % 10 == 0)
+            {
+                ns /= 10;
+                fracDigits--;
+            }
+            len += 1 + fracDigits;
+        }
+
+        if (Offset is TimeSpan o)
+        {
+            len += o == TimeSpan.Zero ? 1 : 6;
+        }
+
+        return len;
+    }
+
+    private static int CountDigits(ulong value)
+    {
+        if (value == 0) return 1;
+        int count = 0;
+        while (value > 0)
+        {
+            count++;
+            value /= 10;
+        }
+        return count;
+    }
+
+    private static void WriteTwoDigits(Span<char> destination, int value)
+    {
+        destination[0] = (char)('0' + (value / 10));
+        destination[1] = (char)('0' + (value % 10));
+    }
+
+    private static void WriteFourDigits(Span<char> destination, int value)
+    {
+        destination[0] = (char)('0' + (value / 1000));
+        destination[1] = (char)('0' + ((value / 100) % 10));
+        destination[2] = (char)('0' + ((value / 10) % 10));
+        destination[3] = (char)('0' + (value % 10));
     }
 
     #endregion
@@ -718,7 +1041,7 @@ public sealed class ExtendedIsoDateTime
         return new ExtendedIsoDateTime(
             local.Year, local.Month, local.Day,
             local.Hour, local.Minute, local.Second,
-            nanosecond, value.Offset);
+            nanosecond, value.Offset, false);
     }
 
     /// <summary>
@@ -745,7 +1068,7 @@ public sealed class ExtendedIsoDateTime
         return new ExtendedIsoDateTime(
             value.Year, value.Month, value.Day,
             value.Hour, value.Minute, value.Second,
-            nanosecond, offset);
+            nanosecond, offset, false);
     }
 
     /// <summary>
@@ -783,6 +1106,17 @@ public sealed class ExtendedIsoDateTime
         long days = (long)dayCount;
         long msOfDay = (long)(milliseconds - dayCount * 86_400_000.0);
 
+        if (msOfDay >= 86_400_000L)
+        {
+            days++;
+            msOfDay -= 86_400_000L;
+        }
+        else if (msOfDay < 0)
+        {
+            days--;
+            msOfDay += 86_400_000L;
+        }
+
         (long year, int month, int day) = CivilFromDays(days);
 
         int hour = (int)(msOfDay / 3_600_000);
@@ -790,7 +1124,7 @@ public sealed class ExtendedIsoDateTime
         int second = (int)(msOfDay / 1_000 % 60);
         int nanosecond = (int)(msOfDay % 1_000) * 1_000_000;
 
-        return new ExtendedIsoDateTime(year, month, day, hour, minute, second, nanosecond, TimeSpan.Zero);
+        return new ExtendedIsoDateTime(year, month, day, hour, minute, second, nanosecond, TimeSpan.Zero, false);
     }
 
     #endregion

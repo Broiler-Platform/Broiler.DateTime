@@ -10,12 +10,36 @@ It is intentionally minimal: the proleptic Gregorian calendar, astronomical year
 > **Preview status:** This is unstable, AI-assisted first-preview software. Date/time
 > parsing errors can propagate into security and data-integrity decisions, so callers
 > should validate behavior for their own domain. Human-review approval is
-> revision-scoped; consult [HUMAN_REVIEW.md](HUMAN_REVIEW.md) for the reviewed revision
+> revision-scoped; consult [HUMAN_REVIEW.md](https://github.com/Broiler-Platform/Broiler.DateTime/blob/main/HUMAN_REVIEW.md) for the reviewed revision
 > and conditions before describing the current checkout as approved.
 
 - **Target framework:** .NET 10.0
-- **License:** [Apache-2.0](LICENSE)
+- **License:** [Apache-2.0](https://github.com/Broiler-Platform/Broiler.DateTime/blob/main/LICENSE)
 - **Core type:** `Broiler.DateTime.ExtendedIsoDateTime`
+- **Changelog:** [CHANGELOG.md](https://github.com/Broiler-Platform/Broiler.DateTime/blob/main/CHANGELOG.md)
+
+---
+
+## Install
+
+Every published build is a prerelease, so the prerelease flag is required:
+
+```bash
+dotnet add package Broiler.DateTime --prerelease
+```
+
+To pin an exact preview instead of taking the newest one:
+
+```bash
+dotnet add package Broiler.DateTime --version 0.1.0-preview.1
+```
+
+```xml
+<PackageReference Include="Broiler.DateTime" Version="0.1.0-preview.1" />
+```
+
+Preview numbers increase monotonically and are never reused, but the API may change
+between them without notice. Pin an exact version in anything you do not rebuild often.
 
 ---
 
@@ -227,15 +251,18 @@ dotnet test
 The solution contains:
 
 ```
-Broiler.DateTime.sln
+Broiler.DateTime.slnx
 src/Broiler.DateTime/            # the library
 tests/Broiler.DateTime.Tests/    # xUnit test suite
 ```
+
+Packaging, version selection, and the publish pipeline live in `eng/`; see
+[eng/README.md](https://github.com/Broiler-Platform/Broiler.DateTime/blob/main/eng/README.md).
 
 ---
 
 ## License
 
-Licensed under the [Apache License 2.0](LICENSE), which provides the software on an
+Licensed under the [Apache License 2.0](https://github.com/Broiler-Platform/Broiler.DateTime/blob/main/LICENSE), which provides the software on an
 “AS IS” basis without warranties or conditions. A human review applies only to the exact
-commit and scope recorded in [HUMAN_REVIEW.md](HUMAN_REVIEW.md).
+commit and scope recorded in [HUMAN_REVIEW.md](https://github.com/Broiler-Platform/Broiler.DateTime/blob/main/HUMAN_REVIEW.md).

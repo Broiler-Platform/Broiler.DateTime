@@ -4,21 +4,27 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
+const PREVIEW = /^(\d+\.\d+\.\d+)-preview\.([1-9]\d*)$/i;
+const NUGET_ORG = 'https://api.nuget.org/v3/index.json';
 
 function parsePreview(version) {
-  const match = /^(\d+\.\d+\.\d+)-preview\.([1-9]\d*)$/.exec(version);
+  const match = PREVIEW.exec(version);
   if (!match) throw new Error(`Only X.Y.Z-preview.N versions (N >= 1) may be published: '${version}'.`);
   return { prefix: match[1], number: BigInt(match[2]) };
 }
 
-export function chooseVersion(configured, published, { suffix = '', tag = '' } = {}) {
+// The next preview clears every number the release line has ever used, not just
+// the highest one a single source happens to know about. `used` therefore carries
+// the union of every source in main(): drop one of them and a number that was
+// already burned somewhere else gets handed out a second time.
+export function chooseVersion(configured, used, { suffix = '', tag = '' } = {}) {
   const { prefix, number: floor } = parsePreview(configured);
   let next = floor;
-  for (const version of published) {
-    const match = /^(\d+\.\d+\.\d+)-preview\.([1-9]\d*)$/i.exec(version);
-    if (match && match[1] === prefix && BigInt(match[2]) >= next) {
-      next = BigInt(match[2]) + 1n;
-    }
+  for (const version of used) {
+    const match = PREVIEW.exec(version);
+    if (!match || match[1] !== prefix) continue;
+    const after = BigInt(match[2]) + 1n;
+    if (after > next) next = after;
   }
 
   const automatic = `${prefix}-preview.${next}`;
@@ -59,6 +65,19 @@ export async function readVersions(source, packageIds, headers = {}, fetchImpl =
   return results.flat();
 }
 
+// Release tags are the second half of the cumulative baseline. A tag outlives a
+// package that was later deleted or unlisted on nuget.org — and nuget.org never
+// re-serves a deleted version's number to a new upload — while the feed covers a
+// push whose tag never made it. Neither source alone proves a number is free.
+// `exclude` drops the tag that triggered this run, which names the very version
+// being published and would otherwise rule itself out.
+export function readTags(exclude = '', run = command => execFileSync('git', command, { cwd: root, encoding: 'utf8' })) {
+  const output = run(['tag', '--list', 'v*']);
+  return output.split('\n')
+    .map(line => line.trim().replace(/^v/, ''))
+    .filter(version => version && version !== exclude);
+}
+
 function readPackages() {
   const solutions = readdirSync(root).filter(name => name.endsWith('.slnx'));
   if (solutions.length !== 1) throw new Error('Expected exactly one solution.');
@@ -84,29 +103,22 @@ async function main() {
   const configured = packages[0].PackageVersion;
   parsePreview(configured);
   const packageIds = packages.map(p => p.PackageId);
-  const target = process.env.TARGET || 'nuget';
-  if (!['nuget', 'github'].includes(target)) throw new Error(`Unknown target '${target}'.`);
-  // NuGet.org is the baseline even when publishing to GitHub Packages.
-  const published = await readVersions('https://api.nuget.org/v3/index.json', packageIds);
-  if (target === 'github') {
-    const { GITHUB_REPOSITORY_OWNER: owner, GITHUB_ACTOR: actor, GITHUB_TOKEN: token } = process.env;
-    if (!owner || !actor || !token) throw new Error('GitHub feed lookup requires owner, actor, and token.');
-    const authorization = `Basic ${Buffer.from(`${actor}:${token}`).toString('base64')}`;
-    published.push(...await readVersions(
-      `https://nuget.pkg.github.com/${owner}/index.json`, packageIds, { authorization }));
-  }
+
   const tag = process.env.GITHUB_EVENT_NAME === 'push'
     ? (process.env.GITHUB_REF || '').replace(/^refs\/tags\//, '') : '';
   if (process.env.GITHUB_EVENT_NAME === 'push' && !tag.startsWith('v')) {
     throw new Error('Publishing on push requires a v-prefixed preview tag.');
   }
-  const version = chooseVersion(configured, published, {
+
+  const feed = await readVersions(NUGET_ORG, packageIds);
+  const tags = readTags(tag.replace(/^v/, ''));
+  const version = chooseVersion(configured, [...feed, ...tags], {
     suffix: process.env.VERSION_SUFFIX || '', tag,
   });
-  console.log(`Version: ${version} -> ${target} (${packageIds.length} packages; dry-run: ${process.env.DRY_RUN ?? 'true'})`);
+  console.log(`Version: ${version} -> nuget.org (${packageIds.length} packages; ` +
+    `${feed.length} feed versions, ${tags.length} tags; dry-run: ${process.env.DRY_RUN ?? 'true'})`);
   if (process.env.GITHUB_OUTPUT) {
-    appendFileSync(process.env.GITHUB_OUTPUT,
-      `version=${version}\nversion_args=-p:Version=${version} -p:PackageVersion=${version}\n`);
+    appendFileSync(process.env.GITHUB_OUTPUT, `version=${version}\n`);
   }
 }
 

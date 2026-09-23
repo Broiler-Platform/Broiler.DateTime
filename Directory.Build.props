@@ -9,6 +9,9 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <PackageProjectUrl>https://github.com/Broiler-Platform/Broiler.DateTime</PackageProjectUrl>
     <PackageTags>broiler;datetime;iso8601;rfc3339;calendar</PackageTags>
-    <Description>Extended-range ISO-8601 / RFC-3339 date-time value library for Broiler.</Description>
+    <Description>Extended-range ISO-8601 / RFC-3339 date-time value library for Broiler. Represents instants outside the .NET DateTime year range, including ISO expanded years such as +010000 and negative astronomical years such as -000001, with nanosecond precision and fixed UTC offsets.</Description>
+    <!-- Preview numbers are assigned by the publish pipeline, so the notes point at
+         the changelog's release line rather than naming a single preview. -->
+    <PackageReleaseNotes>Unstable preview. Changes for this release line: https://github.com/Broiler-Platform/Broiler.DateTime/blob/main/CHANGELOG.md</PackageReleaseNotes>
   </PropertyGroup>
 </Project>

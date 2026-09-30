@@ -1,3 +1,20 @@
+// SPDX-FileCopyrightText: 2026 Broiler Platform contributors
+// SPDX-License-Identifier: Apache-2.0
+//
+// Broiler Code Assurance
+// ----------------------
+// Relevant units:   61
+// Annotated:        61/61
+// Exempt:           12
+// Human-reviewed:   0/61
+// IP risk:          Medium
+// Security risk:    Critical
+// Criteria:         61/22
+// Resource impact:  3/10 max
+// Unverified:       61
+//
+// GENERATED - DO NOT EDIT MANUALLY
+
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Numerics;
@@ -29,6 +46,9 @@ namespace Broiler.DateTime;
 ///
 /// <para><b>Precision.</b> Fractional seconds are stored with nanosecond precision.</para>
 /// </remarks>
+// Broiler-AI:           Origin=AI; IP=Low; Security=Critical; Resources=3; Fingerprint=253F31
+// Broiler-Falsified-If: a UTF-8 span longer than 64 bytes reaches the stackalloc char buffer in TryParse(ReadOnlySpan<byte>) instead of being rejected by its 19..64 length guard
+// Broiler-Human:        PENDING
 [JsonConverter(typeof(ExtendedIsoDateTimeJsonConverter))]
 public sealed class ExtendedIsoDateTime
     : IEquatable<ExtendedIsoDateTime>,
@@ -44,14 +64,29 @@ public sealed class ExtendedIsoDateTime
       IComparisonOperators<ExtendedIsoDateTime, ExtendedIsoDateTime, bool>
 {
     /// <summary>Number of nanoseconds in a single second.</summary>
+    // Broiler-AI:           Origin=AI; IP=None; Security=Medium; Resources=0; Fingerprint=AC6212
+    // Broiler-Falsified-If: the constant differs from 1,000,000,000, so NanosecondOfDay and the UTC instant behind equality and ordering scale seconds wrongly
+    // Broiler-Human:        PENDING
     public const long NanosecondsPerSecond = 1_000_000_000L;
 
+    // Broiler-AI:           Origin=AI; IP=None; Security=Medium; Resources=0; Fingerprint=6B77F9
+    // Broiler-Falsified-If: the value is not 86,400,000,000,000, so ToUtcInstant borrows the wrong amount when a +01:00 offset moves 00:30 before midnight
+    // Broiler-Human:        PENDING
     private const long NanosecondsPerDay = 86_400L * NanosecondsPerSecond;
+    // Broiler-AI:           Origin=AI; IP=None; Security=Medium; Resources=0; Fingerprint=2EAC92
+    // Broiler-Falsified-If: a +01:00 offset moves the UTC instant by other than 3,600,000,000,000 ns because the tick-to-nanosecond factor is not 100
+    // Broiler-Human:        PENDING
     private const long TicksPerNanosecondDivisor = 100L; // 1 tick == 100 ns
 
+    // Broiler-AI:           Origin=AI; IP=None; Security=High; Resources=0; Fingerprint=891DA7
+    // Broiler-Falsified-If: an entry differs from the Gregorian common-year month lengths, so the parser accepts 2025-04-31 or rejects 2025-01-31
+    // Broiler-Human:        PENDING
     private static ReadOnlySpan<byte> DaysInMonthCommon => [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
     // Day number of 0001-01-01 in the "days since 1970-01-01" system used by the civil algorithms.
+    // Broiler-AI:           Origin=AI; IP=None; Security=Medium; Resources=0; Fingerprint=173A1E
+    // Broiler-Falsified-If: the stored day number is not -719162, so 0001-01-01T00:00:00Z converts to a DateTimeOffset other than tick 0
+    // Broiler-Human:        PENDING
     private static readonly long DayNumberOfYear0001 = DaysFromCivil(1, 1, 1);
 
     /// <summary>The signed year using astronomical numbering (year 0 exists; -1 == 2 BCE).</summary>
@@ -82,6 +117,9 @@ public sealed class ExtendedIsoDateTime
     public TimeSpan? Offset { get; }
 
     /// <summary>Gets a value indicating whether this value carries a fixed UTC offset.</summary>
+    // Broiler-AI:           Origin=AI; IP=None; Security=Low; Resources=0; Fingerprint=29FCBE
+    // Broiler-Falsified-If: a value parsed without an offset, such as 2025-01-01T00:00:00, reports HasOffset true
+    // Broiler-Human:        PENDING
     public bool HasOffset => Offset.HasValue;
 
     /// <summary>
@@ -96,6 +134,9 @@ public sealed class ExtendedIsoDateTime
     /// <param name="nanosecond">Fractional second in nanoseconds, 0 to 999,999,999.</param>
     /// <param name="offset">Fixed UTC offset, or <see langword="null"/> for an unspecified offset.</param>
     /// <exception cref="ArgumentOutOfRangeException">A component is outside its valid range.</exception>
+    // Broiler-AI:           Origin=AI; IP=Low; Security=High; Resources=1; Fingerprint=6CDF0F
+    // Broiler-Falsified-If: a component outside its documented range (month 13, second 60, an offset of 90 seconds or exactly +24:00) yields an instance instead of ArgumentOutOfRangeException
+    // Broiler-Human:        PENDING
     public ExtendedIsoDateTime(
         long year,
         int month,
@@ -139,6 +180,9 @@ public sealed class ExtendedIsoDateTime
         Offset = offset;
     }
 
+    // Broiler-AI:           Origin=AI; IP=Low; Security=High; Resources=0; Fingerprint=E46CC0
+    // Broiler-Falsified-If: Validate and IsValid disagree on some tuple, e.g. one accepting 1900-02-29 or an offset of exactly -24:00 that the other rejects
+    // Broiler-Human:        PENDING
     private static void Validate(
         long year,
         int month,
@@ -179,6 +223,9 @@ public sealed class ExtendedIsoDateTime
         }
     }
 
+    // Broiler-AI:           Origin=AI; IP=Low; Security=High; Resources=0; Fingerprint=64A2F0
+    // Broiler-Falsified-If: IsValid returns true for a tuple the parser must reject, e.g. 1900-02-29, hour 24 or an offset with a non-zero seconds part
+    // Broiler-Human:        PENDING
     internal static bool IsValid(
         long year,
         int month,
@@ -207,6 +254,9 @@ public sealed class ExtendedIsoDateTime
     /// Factory equivalent of the validating constructor.
     /// </summary>
     /// <inheritdoc cref="ExtendedIsoDateTime(long,int,int,int,int,int,int,System.Nullable{System.TimeSpan})"/>
+    // Broiler-AI:           Origin=AI; IP=None; Security=High; Resources=1; Fingerprint=99942E
+    // Broiler-Falsified-If: Create returns an instance for a tuple the validating constructor rejects, such as day 0 or nanosecond 1,000,000,000
+    // Broiler-Human:        PENDING
     public static ExtendedIsoDateTime Create(
         long year,
         int month,
@@ -224,10 +274,16 @@ public sealed class ExtendedIsoDateTime
     /// Returns whether <paramref name="year"/> is a leap year under the proleptic Gregorian rules
     /// (divisible by 4, except by 100, except by 400). Valid for negative and zero years.
     /// </summary>
+    // Broiler-AI:           Origin=AI; IP=Low; Security=High; Resources=0; Fingerprint=8BE12E
+    // Broiler-Falsified-If: a negative or zero century year is misclassified, e.g. -100 reported leap or -400 or 0 reported common
+    // Broiler-Human:        PENDING
     public static bool IsLeapYear(long year)
         => (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
 
     /// <summary>Returns the number of days in the given month of the given year.</summary>
+    // Broiler-AI:           Origin=AI; IP=Low; Security=High; Resources=0; Fingerprint=D40ACD
+    // Broiler-Falsified-If: February of a year divisible by 100 but not 400 (1900 or -100) returns 29, so the parser accepts 29 February in it
+    // Broiler-Human:        PENDING
     public static int DaysInMonth(long year, int month)
     {
         if (month is < 1 or > 12)
@@ -242,6 +298,9 @@ public sealed class ExtendedIsoDateTime
     /// Based on Howard Hinnant's public-domain <c>days_from_civil</c> algorithm; valid for the
     /// whole proleptic Gregorian calendar including negative years.
     /// </summary>
+    // Broiler-AI:           Origin=Ported; IP=Medium; Security=Medium; Resources=0; Fingerprint=98C182
+    // Broiler-Falsified-If: a year beyond about 2.5e16 in magnitude (e.g. +099999999999999999) makes era * 146097 wrap silently and returns a day number of the wrong sign
+    // Broiler-Human:        PENDING
     internal static long DaysFromCivil(long y, int m, int d)
     {
         y -= m <= 2 ? 1 : 0;
@@ -256,6 +315,9 @@ public sealed class ExtendedIsoDateTime
     /// Inverse of <see cref="DaysFromCivil"/>. Converts a serial day number (0 == 1970-01-01)
     /// back to a civil (year, month, day) date. Based on Hinnant's <c>civil_from_days</c>.
     /// </summary>
+    // Broiler-AI:           Origin=Ported; IP=Medium; Security=Medium; Resources=0; Fingerprint=397091
+    // Broiler-Falsified-If: CivilFromDays(long.MaxValue) wraps in z += 719468 and returns the negative year -25252734927764585 instead of a far-future one
+    // Broiler-Human:        PENDING
     internal static (long year, int month, int day) CivilFromDays(long z)
     {
         z += 719468;
@@ -271,9 +333,15 @@ public sealed class ExtendedIsoDateTime
     }
 
     /// <summary>The serial day number (0 == 1970-01-01) of this value's calendar date.</summary>
+    // Broiler-AI:           Origin=AI; IP=None; Security=Medium; Resources=0; Fingerprint=D9105D
+    // Broiler-Falsified-If: a parsed year of +099999999999999999 yields a negative day number, so the value orders before 0001-01-01
+    // Broiler-Human:        PENDING
     private long DayNumber => DaysFromCivil(Year, Month, Day);
 
     /// <summary>Nanoseconds elapsed since midnight for this value's time-of-day.</summary>
+    // Broiler-AI:           Origin=AI; IP=Low; Security=Medium; Resources=0; Fingerprint=EFBCB8
+    // Broiler-Falsified-If: 23:59:59.999999999 yields other than 86,399,999,999,999 ns
+    // Broiler-Human:        PENDING
     private long NanosecondOfDay
         => ((long)((Hour * 60 + Minute) * 60 + Second)) * NanosecondsPerSecond + Nanosecond;
 
@@ -285,6 +353,9 @@ public sealed class ExtendedIsoDateTime
     /// Returns a new value advanced by <paramref name="days"/> calendar days. Time-of-day and
     /// offset are preserved. Negative values move backwards.
     /// </summary>
+    // Broiler-AI:           Origin=AI; IP=Low; Security=Medium; Resources=1; Fingerprint=305943
+    // Broiler-Falsified-If: AddDays(long.MaxValue) on 0001-01-01 returns +25252734927766555-07-29 instead of throwing OverflowException as AddMonths and AddYears do
+    // Broiler-Human:        PENDING
     public ExtendedIsoDateTime AddDays(long days)
     {
         (long y, int m, int d) = CivilFromDays(DayNumber + days);
@@ -296,6 +367,9 @@ public sealed class ExtendedIsoDateTime
     /// fewer days than <see cref="Day"/>, the day is clamped to the last day of that month
     /// (for example, Jan 31 + 1 month → Feb 28/29).
     /// </summary>
+    // Broiler-AI:           Origin=AI; IP=Low; Security=Medium; Resources=1; Fingerprint=789C01
+    // Broiler-Falsified-If: adding one month to 31 January yields a day other than the last day of February of that year
+    // Broiler-Human:        PENDING
     public ExtendedIsoDateTime AddMonths(long months)
     {
         checked
@@ -320,6 +394,9 @@ public sealed class ExtendedIsoDateTime
     /// Returns a new value with <paramref name="years"/> years added. Feb 29 in a leap year is
     /// clamped to Feb 28 when the target year is not a leap year.
     /// </summary>
+    // Broiler-AI:           Origin=AI; IP=Low; Security=Medium; Resources=1; Fingerprint=5B95CB
+    // Broiler-Falsified-If: adding one year to 2024-02-29 yields 29 February 2025 instead of clamping to 28 February
+    // Broiler-Human:        PENDING
     public ExtendedIsoDateTime AddYears(long years)
     {
         checked
@@ -340,6 +417,9 @@ public sealed class ExtendedIsoDateTime
     /// method throws when the difference does not fit into a <see cref="TimeSpan"/>.
     /// </remarks>
     /// <exception cref="OverflowException">The difference is too large for a <see cref="TimeSpan"/>.</exception>
+    // Broiler-AI:           Origin=AI; IP=Low; Security=Medium; Resources=0; Fingerprint=4A1F38
+    // Broiler-Falsified-If: +025252734927766555-07-29T00:00:00Z minus -025252734927764585-01-01T00:00:00Z returns a small negative TimeSpan (-719005 days) instead of OverflowException because the day numbers wrap
+    // Broiler-Human:        PENDING
     public TimeSpan Difference(ExtendedIsoDateTime other)
     {
         if (other is null) throw new ArgumentNullException(nameof(other));
@@ -378,6 +458,9 @@ public sealed class ExtendedIsoDateTime
     /// Returns the whole number of calendar days between the two values' dates
     /// (<c>this - other</c>), ignoring time-of-day and offset.
     /// </summary>
+    // Broiler-AI:           Origin=AI; IP=Low; Security=Medium; Resources=0; Fingerprint=325F5F
+    // Broiler-Falsified-If: +099999999999999999-01-01 minus 0001-01-01 returns a negative day count (-369238147419103963) instead of a far-future one
+    // Broiler-Human:        PENDING
     public long DaysBetween(ExtendedIsoDateTime other)
     {
         if (other is null) throw new ArgumentNullException(nameof(other));
@@ -392,6 +475,9 @@ public sealed class ExtendedIsoDateTime
     /// Normalizes this value to a UTC instant expressed as (serial day number, nanosecond of day).
     /// Unspecified offsets are treated as UTC.
     /// </summary>
+    // Broiler-AI:           Origin=AI; IP=Low; Security=Medium; Resources=0; Fingerprint=830D37
+    // Broiler-Falsified-If: 2025-01-01T00:30:00+01:00 is not normalized to the previous day with a nanosecond-of-day of 84,600,000,000,000 (23:30 UTC)
+    // Broiler-Human:        PENDING
     private (long days, long nanoOfDay) ToUtcInstant()
     {
         long days = DayNumber;
@@ -414,6 +500,9 @@ public sealed class ExtendedIsoDateTime
     }
 
     /// <inheritdoc />
+    // Broiler-AI:           Origin=AI; IP=Low; Security=Medium; Resources=0; Fingerprint=8A7744
+    // Broiler-Falsified-If: +099999999999999999-01-01T00:00:00Z compares less than 0001-01-01T00:00:00Z because its day number wraps
+    // Broiler-Human:        PENDING
     public int CompareTo(ExtendedIsoDateTime? other)
     {
         if (other is null) return 1;
@@ -423,6 +512,9 @@ public sealed class ExtendedIsoDateTime
         return byDay != 0 ? byDay : aNanos.CompareTo(bNanos);
     }
 
+    // Broiler-AI:           Origin=AI; IP=Low; Security=Medium; Resources=0; Fingerprint=499B7A
+    // Broiler-Falsified-If: an object that is not an ExtendedIsoDateTime returns an ordering instead of throwing ArgumentException
+    // Broiler-Human:        PENDING
     int IComparable.CompareTo(object? obj)
     {
         if (obj is null) return 1;
@@ -435,6 +527,9 @@ public sealed class ExtendedIsoDateTime
     /// time line. Unspecified offsets are treated as UTC. Use <see cref="EqualsExact"/> for a
     /// component-by-component comparison.
     /// </summary>
+    // Broiler-AI:           Origin=AI; IP=Low; Security=Medium; Resources=0; Fingerprint=F41E07
+    // Broiler-Falsified-If: the distinct instants -50505469855531084-04-10T00:00:00Z and 2025-06-01T00:00:00Z compare equal because their day numbers wrap onto the same value
+    // Broiler-Human:        PENDING
     public bool Equals(ExtendedIsoDateTime? other)
     {
         if (other is null) return false;
@@ -445,6 +540,9 @@ public sealed class ExtendedIsoDateTime
     /// Determines whether every component (including the offset and its specified/unspecified state)
     /// matches exactly. <c>...+00:00</c> and <c>...Z</c> are considered the same offset (both zero).
     /// </summary>
+    // Broiler-AI:           Origin=AI; IP=Low; Security=Medium; Resources=0; Fingerprint=D934EB
+    // Broiler-Falsified-If: a value with offset Z and the same components with an unspecified offset compare exactly equal
+    // Broiler-Human:        PENDING
     public bool EqualsExact(ExtendedIsoDateTime? other)
     {
         if (other is null) return false;
@@ -462,6 +560,9 @@ public sealed class ExtendedIsoDateTime
     public override bool Equals(object? obj) => obj is ExtendedIsoDateTime other && Equals(other);
 
     /// <inheritdoc />
+    // Broiler-AI:           Origin=AI; IP=Low; Security=Medium; Resources=0; Fingerprint=AC2A25
+    // Broiler-Falsified-If: two values equal under Equals, such as 2025-01-01T01:00:00+01:00 and 2025-01-01T00:00:00Z, return different hash codes
+    // Broiler-Human:        PENDING
     public override int GetHashCode()
     {
         (long days, long nanos) = ToUtcInstant();
@@ -469,14 +570,23 @@ public sealed class ExtendedIsoDateTime
     }
 
     /// <summary>Instant-equality operator. See <see cref="Equals(ExtendedIsoDateTime)"/>.</summary>
+    // Broiler-AI:           Origin=AI; IP=None; Security=Medium; Resources=0; Fingerprint=73B243
+    // Broiler-Falsified-If: null == null returns false, or a null left operand throws instead of comparing
+    // Broiler-Human:        PENDING
     public static bool operator ==(ExtendedIsoDateTime? left, ExtendedIsoDateTime? right)
         => left is null ? right is null : left.Equals(right);
 
     /// <summary>Instant-inequality operator.</summary>
+    // Broiler-AI:           Origin=AI; IP=None; Security=Medium; Resources=0; Fingerprint=117B4D
+    // Broiler-Falsified-If: the inequality operator returns the same result as the equality operator for some pair of operands
+    // Broiler-Human:        PENDING
     public static bool operator !=(ExtendedIsoDateTime? left, ExtendedIsoDateTime? right)
         => !(left == right);
 
     /// <summary>Less-than instant comparison.</summary>
+    // Broiler-AI:           Origin=AI; IP=None; Security=Medium; Resources=0; Fingerprint=F5C905
+    // Broiler-Falsified-If: a null left operand returns a result instead of throwing ArgumentNullException
+    // Broiler-Human:        PENDING
     public static bool operator <(ExtendedIsoDateTime left, ExtendedIsoDateTime right)
     {
         ArgumentNullException.ThrowIfNull(left);
@@ -484,6 +594,9 @@ public sealed class ExtendedIsoDateTime
     }
 
     /// <summary>Greater-than instant comparison.</summary>
+    // Broiler-AI:           Origin=AI; IP=None; Security=Medium; Resources=0; Fingerprint=C2ABB2
+    // Broiler-Falsified-If: a null left operand returns a result instead of throwing ArgumentNullException
+    // Broiler-Human:        PENDING
     public static bool operator >(ExtendedIsoDateTime left, ExtendedIsoDateTime right)
     {
         ArgumentNullException.ThrowIfNull(left);
@@ -491,6 +604,9 @@ public sealed class ExtendedIsoDateTime
     }
 
     /// <summary>Less-than-or-equal instant comparison.</summary>
+    // Broiler-AI:           Origin=AI; IP=None; Security=Medium; Resources=0; Fingerprint=EBE5E2
+    // Broiler-Falsified-If: a null left operand returns a result instead of throwing ArgumentNullException
+    // Broiler-Human:        PENDING
     public static bool operator <=(ExtendedIsoDateTime left, ExtendedIsoDateTime right)
     {
         ArgumentNullException.ThrowIfNull(left);
@@ -498,6 +614,9 @@ public sealed class ExtendedIsoDateTime
     }
 
     /// <summary>Greater-than-or-equal instant comparison.</summary>
+    // Broiler-AI:           Origin=AI; IP=None; Security=Medium; Resources=0; Fingerprint=DB47A7
+    // Broiler-Falsified-If: a null left operand returns a result instead of throwing ArgumentNullException
+    // Broiler-Human:        PENDING
     public static bool operator >=(ExtendedIsoDateTime left, ExtendedIsoDateTime right)
     {
         ArgumentNullException.ThrowIfNull(left);
@@ -509,6 +628,9 @@ public sealed class ExtendedIsoDateTime
     #region Deconstruct
 
     /// <summary>Deconstructs the value into its date components.</summary>
+    // Broiler-AI:           Origin=AI; IP=None; Security=Low; Resources=0; Fingerprint=B8D374
+    // Broiler-Falsified-If: the three-part Deconstruct returns components that differ from Year, Month and Day
+    // Broiler-Human:        PENDING
     public void Deconstruct(out long year, out int month, out int day)
     {
         year = Year;
@@ -517,6 +639,9 @@ public sealed class ExtendedIsoDateTime
     }
 
     /// <summary>Deconstructs the value into all of its components.</summary>
+    // Broiler-AI:           Origin=AI; IP=None; Security=Low; Resources=0; Fingerprint=7FE098
+    // Broiler-Falsified-If: the eight-part Deconstruct reports an offset for a value whose offset is unspecified
+    // Broiler-Human:        PENDING
     public void Deconstruct(
         out long year,
         out int month,
@@ -548,6 +673,9 @@ public sealed class ExtendedIsoDateTime
     /// </summary>
     /// <exception cref="ArgumentNullException"><paramref name="s"/> is null.</exception>
     /// <exception cref="FormatException">The input is not a valid extended date-time.</exception>
+    // Broiler-AI:           Origin=AI; IP=None; Security=High; Resources=3; Fingerprint=21CAE8
+    // Broiler-Falsified-If: a string TryParse rejects (e.g. 2025-13-01T00:00:00Z) returns a value instead of throwing FormatException
+    // Broiler-Human:        PENDING
     public static ExtendedIsoDateTime Parse(string s)
     {
         ArgumentNullException.ThrowIfNull(s);
@@ -555,6 +683,9 @@ public sealed class ExtendedIsoDateTime
     }
 
     /// <inheritdoc cref="Parse(string)"/>
+    // Broiler-AI:           Origin=AI; IP=None; Security=High; Resources=3; Fingerprint=40AF28
+    // Broiler-Falsified-If: a string TryParse rejects (e.g. 2025-02-30T00:00:00Z) returns a value instead of throwing FormatException
+    // Broiler-Human:        PENDING
     public static ExtendedIsoDateTime Parse(string s, IFormatProvider? provider)
     {
         ArgumentNullException.ThrowIfNull(s);
@@ -564,6 +695,9 @@ public sealed class ExtendedIsoDateTime
     /// <summary>
     /// Parses an ISO-8601 / RFC-3339 extended date-time character span.
     /// </summary>
+    // Broiler-AI:           Origin=AI; IP=Low; Security=High; Resources=3; Fingerprint=E57438
+    // Broiler-Falsified-If: a span TryParse rejects (e.g. 2025-01-01T24:00:00Z) returns a value instead of throwing FormatException
+    // Broiler-Human:        PENDING
     public static ExtendedIsoDateTime Parse(ReadOnlySpan<char> s, IFormatProvider? provider = null)
     {
         if (!TryParse(s, provider, out ExtendedIsoDateTime? value))
@@ -574,6 +708,9 @@ public sealed class ExtendedIsoDateTime
     /// <summary>
     /// Parses an ISO-8601 / RFC-3339 extended date-time UTF-8 byte span.
     /// </summary>
+    // Broiler-AI:           Origin=AI; IP=Low; Security=Critical; Resources=1; Fingerprint=B2EE08
+    // Broiler-Falsified-If: a UTF-8 span longer than 64 bytes returns a value or reaches the stackalloc in TryParse(ReadOnlySpan<byte>) instead of throwing FormatException
+    // Broiler-Human:        PENDING
     public static ExtendedIsoDateTime Parse(ReadOnlySpan<byte> utf8Text, IFormatProvider? provider = null)
     {
         if (!TryParse(utf8Text, provider, out ExtendedIsoDateTime? value))
@@ -585,20 +722,32 @@ public sealed class ExtendedIsoDateTime
     /// Attempts to parse an ISO-8601 / RFC-3339 extended date-time string. Returns
     /// <see langword="false"/> instead of throwing on malformed or out-of-range input.
     /// </summary>
+    // Broiler-AI:           Origin=AI; IP=None; Security=High; Resources=3; Fingerprint=70166B
+    // Broiler-Falsified-If: a null string returns true or throws instead of returning false with a null result
+    // Broiler-Human:        PENDING
     public static bool TryParse([NotNullWhen(true)] string? s, [MaybeNullWhen(false)] out ExtendedIsoDateTime result)
         => TryParse(s.AsSpan(), null, out result);
 
     /// <inheritdoc cref="TryParse(string?, out ExtendedIsoDateTime?)"/>
+    // Broiler-AI:           Origin=AI; IP=None; Security=High; Resources=3; Fingerprint=0B6ABA
+    // Broiler-Falsified-If: a null string returns true or throws instead of returning false with a null result
+    // Broiler-Human:        PENDING
     public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out ExtendedIsoDateTime result)
         => TryParse(s.AsSpan(), provider, out result);
 
     /// <summary>
     /// Attempts to parse an ISO-8601 / RFC-3339 extended date-time character span.
     /// </summary>
+    // Broiler-AI:           Origin=AI; IP=None; Security=High; Resources=3; Fingerprint=A09413
+    // Broiler-Falsified-If: an empty span returns true or throws instead of returning false
+    // Broiler-Human:        PENDING
     public static bool TryParse(ReadOnlySpan<char> s, [MaybeNullWhen(false)] out ExtendedIsoDateTime result)
         => TryParse(s, null, out result);
 
     /// <inheritdoc cref="TryParse(ReadOnlySpan{char}, out ExtendedIsoDateTime?)"/>
+    // Broiler-AI:           Origin=AI; IP=Low; Security=High; Resources=3; Fingerprint=220C53
+    // Broiler-Falsified-If: an expanded year beyond about 2.5e16 in magnitude (e.g. +099999999999999999) is accepted, although DaysFromCivil wraps for it and the value then orders before 0001-01-01
+    // Broiler-Human:        PENDING
     public static bool TryParse(ReadOnlySpan<char> s, IFormatProvider? provider, [MaybeNullWhen(false)] out ExtendedIsoDateTime result)
     {
         result = null;
@@ -706,6 +855,9 @@ public sealed class ExtendedIsoDateTime
     /// <summary>
     /// Attempts to parse an ISO-8601 / RFC-3339 extended date-time UTF-8 byte span.
     /// </summary>
+    // Broiler-AI:           Origin=AI; IP=Low; Security=Critical; Resources=1; Fingerprint=3D4933
+    // Broiler-Falsified-If: a UTF-8 span outside 19..64 bytes reaches stackalloc char[utf8Text.Length] instead of returning false at the length guard
+    // Broiler-Human:        PENDING
     public static bool TryParse(ReadOnlySpan<byte> utf8Text, IFormatProvider? provider, [MaybeNullWhen(false)] out ExtendedIsoDateTime result)
     {
         result = null;
@@ -720,6 +872,9 @@ public sealed class ExtendedIsoDateTime
         return TryParse(chars, provider, out result);
     }
 
+    // Broiler-AI:           Origin=AI; IP=Low; Security=High; Resources=0; Fingerprint=E8C2CD
+    // Broiler-Falsified-If: a position at or past the end of the span returns true or advances pos
+    // Broiler-Human:        PENDING
     private static bool Expect(ReadOnlySpan<char> s, ref int pos, char expected)
     {
         if (pos < s.Length && s[pos] == expected)
@@ -730,6 +885,9 @@ public sealed class ExtendedIsoDateTime
         return false;
     }
 
+    // Broiler-AI:           Origin=AI; IP=Low; Security=High; Resources=1; Fingerprint=F39E10
+    // Broiler-Falsified-If: a non-ASCII digit (e.g. fullwidth or Arabic-Indic) or a field that runs past the end of the span is accepted as a two-digit component
+    // Broiler-Human:        PENDING
     private static bool TryReadFixedDigits(ReadOnlySpan<char> s, ref int pos, int count, out int value)
     {
         value = 0;
@@ -773,6 +931,9 @@ public sealed class ExtendedIsoDateTime
     ///   removed) and are omitted entirely when zero.</description></item>
     /// </list>
     /// </remarks>
+    // Broiler-AI:           Origin=AI; IP=Low; Security=Low; Resources=1; Fingerprint=6F166D
+    // Broiler-Falsified-If: the string for a valid value (e.g. year -1 or 10000 with a 100 ns fraction) does not parse back to an EqualsExact value
+    // Broiler-Human:        PENDING
     public string ToStringIso()
     {
         int length = GetIsoStringLength();
@@ -785,10 +946,16 @@ public sealed class ExtendedIsoDateTime
     /// <summary>
     /// Attempts to format the value into the provided character span.
     /// </summary>
+    // Broiler-AI:           Origin=AI; IP=None; Security=Low; Resources=1; Fingerprint=7AA20A
+    // Broiler-Falsified-If: a destination shorter than the ISO length is written to instead of returning false
+    // Broiler-Human:        PENDING
     public bool TryFormat(Span<char> destination, out int charsWritten)
         => TryFormat(destination, out charsWritten, default, null);
 
     /// <inheritdoc cref="ISpanFormattable.TryFormat(Span{char}, out int, ReadOnlySpan{char}, IFormatProvider?)"/>
+    // Broiler-AI:           Origin=AI; IP=Low; Security=Low; Resources=1; Fingerprint=F1A0CD
+    // Broiler-Falsified-If: a destination one character shorter than GetIsoStringLength returns true or throws instead of returning false with charsWritten 0
+    // Broiler-Human:        PENDING
     public bool TryFormat(
         Span<char> destination,
         out int charsWritten,
@@ -886,6 +1053,9 @@ public sealed class ExtendedIsoDateTime
     }
 
     /// <inheritdoc cref="IUtf8SpanFormattable.TryFormat(Span{byte}, out int, ReadOnlySpan{char}, IFormatProvider?)"/>
+    // Broiler-AI:           Origin=AI; IP=Low; Security=Critical; Resources=1; Fingerprint=868208
+    // Broiler-Falsified-If: some value makes GetIsoStringLength return more than 51, so stackalloc char[required] grows with the stored year past its 51-character maximum
+    // Broiler-Human:        PENDING
     public bool TryFormat(
         Span<byte> utf8Destination,
         out int bytesWritten,
@@ -915,6 +1085,9 @@ public sealed class ExtendedIsoDateTime
         return true;
     }
 
+    // Broiler-AI:           Origin=AI; IP=Low; Security=Critical; Resources=1; Fingerprint=56ADA3
+    // Broiler-Falsified-If: for some value the returned length differs from the characters TryFormat(Span<char>) writes, or exceeds 51 (year long.MinValue with nine fraction digits and offset -01:01 must give 51)
+    // Broiler-Human:        PENDING
     private int GetIsoStringLength()
     {
         int len;
@@ -951,6 +1124,9 @@ public sealed class ExtendedIsoDateTime
         return len;
     }
 
+    // Broiler-AI:           Origin=AI; IP=Low; Security=Critical; Resources=1; Fingerprint=14FC8E
+    // Broiler-Falsified-If: some ulong yields a count other than its decimal length, e.g. 9223372036854775808 (the magnitude of long.MinValue) not yielding 19
+    // Broiler-Human:        PENDING
     private static int CountDigits(ulong value)
     {
         if (value == 0) return 1;
@@ -963,12 +1139,18 @@ public sealed class ExtendedIsoDateTime
         return count;
     }
 
+    // Broiler-AI:           Origin=AI; IP=Low; Security=Low; Resources=0; Fingerprint=267548
+    // Broiler-Falsified-If: WriteTwoDigits with 7 writes other than 07
+    // Broiler-Human:        PENDING
     private static void WriteTwoDigits(Span<char> destination, int value)
     {
         destination[0] = (char)('0' + (value / 10));
         destination[1] = (char)('0' + (value % 10));
     }
 
+    // Broiler-AI:           Origin=AI; IP=Low; Security=Low; Resources=0; Fingerprint=5952AB
+    // Broiler-Falsified-If: WriteFourDigits with 42 writes other than 0042
+    // Broiler-Human:        PENDING
     private static void WriteFourDigits(Span<char> destination, int value)
     {
         destination[0] = (char)('0' + (value / 1000));
@@ -991,6 +1173,9 @@ public sealed class ExtendedIsoDateTime
     /// </remarks>
     /// <exception cref="InvalidOperationException">The offset is unspecified.</exception>
     /// <exception cref="ArgumentOutOfRangeException">The value is outside the supported range.</exception>
+    // Broiler-AI:           Origin=AI; IP=Low; Security=Medium; Resources=0; Fingerprint=E6DC77
+    // Broiler-Falsified-If: 0001-01-01T00:00:00+01:00, whose UTC instant is before DateTimeOffset.MinValue, returns a value instead of ArgumentOutOfRangeException
+    // Broiler-Human:        PENDING
     public System.DateTimeOffset ToDateTimeOffset()
     {
         if (Offset is not TimeSpan o)
@@ -1016,6 +1201,9 @@ public sealed class ExtendedIsoDateTime
     /// Attempts to convert this value to a <see cref="System.DateTimeOffset"/>. Returns
     /// <see langword="false"/> when the offset is unspecified or the value is out of range.
     /// </summary>
+    // Broiler-AI:           Origin=AI; IP=Low; Security=Medium; Resources=1; Fingerprint=E05374
+    // Broiler-Falsified-If: an out-of-range or offset-less value lets an exception escape instead of returning false with a default value
+    // Broiler-Human:        PENDING
     public bool TryToDateTimeOffset(out System.DateTimeOffset value)
     {
         try
@@ -1034,6 +1222,9 @@ public sealed class ExtendedIsoDateTime
     /// Creates an <see cref="ExtendedIsoDateTime"/> from a <see cref="System.DateTimeOffset"/>,
     /// preserving its wall-clock components and fixed offset.
     /// </summary>
+    // Broiler-AI:           Origin=AI; IP=Low; Security=Low; Resources=1; Fingerprint=2D84BE
+    // Broiler-Falsified-If: the sub-second ticks are misplaced, e.g. 0.1234567 s yielding other than 123,456,700 ns
+    // Broiler-Human:        PENDING
     public static ExtendedIsoDateTime FromDateTimeOffset(System.DateTimeOffset value)
     {
         System.DateTime local = value.DateTime; // wall-clock time, Kind == Unspecified
@@ -1055,6 +1246,9 @@ public sealed class ExtendedIsoDateTime
     ///   <item><description><see cref="DateTimeKind.Unspecified"/> → unspecified offset.</description></item>
     /// </list>
     /// </remarks>
+    // Broiler-AI:           Origin=AI; IP=Low; Security=Low; Resources=1; Fingerprint=FC9B37
+    // Broiler-Falsified-If: a Local DateTime whose zone offset is not a whole number of minutes is stored with that offset, bypassing the whole-minute rule Validate enforces
+    // Broiler-Human:        PENDING
     public static ExtendedIsoDateTime FromDateTime(System.DateTime value)
     {
         TimeSpan? offset = value.Kind switch
@@ -1082,6 +1276,9 @@ public sealed class ExtendedIsoDateTime
     /// so the result is always a whole number of milliseconds. Unlike
     /// <see cref="System.DateTimeOffset.ToUnixTimeMilliseconds"/>, the full year range is supported.
     /// </remarks>
+    // Broiler-AI:           Origin=AI; IP=Low; Security=Medium; Resources=0; Fingerprint=B84F7B
+    // Broiler-Falsified-If: 1969-12-31T23:59:59.9995Z yields 0 instead of -1, rounding toward zero rather than toward negative infinity
+    // Broiler-Human:        PENDING
     public double ToUnixTimeMilliseconds()
     {
         (long days, long nanoOfDay) = ToUtcInstant();
@@ -1096,6 +1293,9 @@ public sealed class ExtendedIsoDateTime
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="milliseconds"/> is <see cref="double.NaN"/> or infinite.
     /// </exception>
+    // Broiler-AI:           Origin=AI; IP=Low; Security=Medium; Resources=1; Fingerprint=7C9A92
+    // Broiler-Falsified-If: a finite input of about 1e26 or more yields fields outside their validated ranges (Hour 4748 for 1e26, year -25252734927764585 for 1e300) through the unvalidated constructor
+    // Broiler-Human:        PENDING
     public static ExtendedIsoDateTime FromUnixTimeMilliseconds(double milliseconds)
     {
         if (double.IsNaN(milliseconds) || double.IsInfinity(milliseconds))

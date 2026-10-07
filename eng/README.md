@@ -16,7 +16,7 @@ relative to the repository root.
 ## Publishing
 
 The only feed is **nuget.org**. Pushing requires the `NUGET_API_KEY` repository secret;
-the publish workflow fails early if a non-dry-run is started without it.
+the publish workflow fails early if it is started without it.
 
 Scope the nuget.org API key to **Push** for the glob `Broiler.*`. Because the package ID
 does not exist on nuget.org until the first successful push, that first key must also
@@ -25,14 +25,15 @@ allow *Push new packages and package versions*.
 There are two ways to release, both in `.github/workflows/publish.yml`:
 
 - **`workflow_dispatch`** — the normal path. Leave *version-suffix* empty to take the
-  next preview automatically. *dry-run* defaults to `true`: it builds, packs, verifies,
-  and attaches the packages without pushing. Set it to `false` to publish; the workflow
+  next preview automatically. Every run pushes; there is no dry-run mode. The workflow
   then tags the published commit `v<version>`.
-- **Pushing a `v*` tag** — publishes the version named by the tag, never a dry run. The
-  tag must still satisfy the rules below.
+- **Pushing a `v*` tag** — publishes the version named by the tag. The tag must still
+  satisfy the rules below.
 
 Both paths run the full CI workflow (`validate`) against the resolved version first, so
-a package is only pushed if it built, tested, packed, and restored cleanly.
+a package is only pushed if it built, tested, packed, and restored cleanly. That CI
+workflow is also the no-push pack dry run: every push and pull request packs every
+package and verifies a fresh consumer restore from nuget.org.
 
 ## How the preview version is chosen
 

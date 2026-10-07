@@ -7,10 +7,6 @@ on:
         description: 'Optional preview.N (unused and at least the next preview). Empty selects automatically.'
         type: string
         default: ''
-      dry-run:
-        description: Validate and attach packages without pushing to nuget.org
-        type: boolean
-        default: true
   push:
     tags: ['v*']
 
@@ -27,8 +23,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
-    env:
-      DRY_RUN: ${{ github.event_name == 'push' && 'false' || inputs.dry-run }}
     steps:
       - name: Check out
         uses: actions/checkout@v7
@@ -45,7 +39,6 @@ jobs:
         with:
           node-version: '24'
       - name: Require a NuGet.org API key
-        if: env.DRY_RUN != 'true'
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_TOKEN }}
         run: |
@@ -75,7 +68,6 @@ jobs:
       # version baseline cumulative even if the package is later unlisted.
       contents: write
     env:
-      DRY_RUN: ${{ github.event_name == 'push' && 'false' || inputs.dry-run }}
       PACKAGE_VERSION: ${{ needs.version.outputs.version }}
     steps:
       - name: Set up .NET
@@ -93,7 +85,6 @@ jobs:
         shell: pwsh
         run: ./eng/verify-feed.ps1
       - name: Push to NuGet.org
-        if: env.DRY_RUN != 'true'
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_TOKEN }}
         run: >
@@ -104,7 +95,7 @@ jobs:
       # workflow run - so this tag does not re-trigger the `push: tags` path above
       # and try to publish the same version a second time. A PAT would.
       - name: Record the published preview as a tag
-        if: env.DRY_RUN != 'true' && github.event_name != 'push'
+        if: github.event_name != 'push'
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
@@ -115,11 +106,7 @@ jobs:
           {
             echo "### Broiler.DateTime $PACKAGE_VERSION"
             echo
-            if [ "$DRY_RUN" = "true" ]; then
-              echo 'Dry run: validated packages are attached; nothing was pushed.'
-            else
-              echo 'Published to nuget.org.'
-            fi
+            echo 'Published to nuget.org.'
             echo
             echo '```'
             ls -1 artifacts

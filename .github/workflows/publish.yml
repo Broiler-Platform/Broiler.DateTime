@@ -20,7 +20,7 @@ concurrency:
 jobs:
   version:
     name: Resolve preview version
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
@@ -62,7 +62,7 @@ jobs:
   publish:
     name: Publish to nuget.org
     needs: [version, validate]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       # Recording the published preview as a tag is what keeps the next run's
       # version baseline cumulative even if the package is later unlisted.

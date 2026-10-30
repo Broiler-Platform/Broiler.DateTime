@@ -1,8 +1,4 @@
 <Solution>
-  <Folder Name="/src/">
-    <Project Path="src/Broiler.DateTime/Broiler.DateTime.csproj" />
-  </Folder>
-  <Folder Name="/tests/">
-    <Project Path="tests/Broiler.DateTime.Tests/Broiler.DateTime.Tests.csproj" />
-  </Folder>
+  <Project Path="src/Broiler.DateTime/Broiler.DateTime.csproj" />
+  <Project Path="tests/Broiler.DateTime.Tests/Broiler.DateTime.Tests.csproj" />
 </Solution>

@@ -1,0 +1,150 @@
+name: Publish validated DateTime pilot
+
+on:
+  workflow_dispatch:
+    inputs:
+      matrix_run_id:
+        description: Successful aggregate pilot matrix run staged for publication
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+# Share the producer's existing release lock with tag and manual publishing.
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: github.repository == 'Broiler-Platform/Broiler.DateTime' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      manifest_sha256: ${{ steps.plan.outputs.manifest_sha256 }}
+      version: ${{ steps.plan.outputs.version }}
+      producer_commit: ${{ steps.plan.outputs.producer_commit }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - uses: actions/create-github-app-token@v3
+        id: artifact-token
+        with:
+          client-id: ${{ vars.BROILER_RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.BROILER_RELEASE_APP_PRIVATE_KEY }}
+          owner: Broiler-Platform
+          repositories: Broiler
+          permission-actions: read
+      - name: Read source workflow provenance
+        env:
+          GH_TOKEN: ${{ steps.artifact-token.outputs.token }}
+          MATRIX_RUN_ID: ${{ inputs.matrix_run_id }}
+        shell: bash
+        run: |
+          [[ "$MATRIX_RUN_ID" =~ ^[1-9][0-9]*$ ]]
+          gh api "repos/Broiler-Platform/Broiler/actions/runs/$MATRIX_RUN_ID" > matrix-run.json
+      - uses: actions/download-artifact@v7
+        with:
+          repository: Broiler-Platform/Broiler
+          run-id: ${{ inputs.matrix_run_id }}
+          github-token: ${{ steps.artifact-token.outputs.token }}
+          name: nuget-pilot-matrix
+          path: evidence
+      - uses: actions/download-artifact@v7
+        with:
+          repository: Broiler-Platform/Broiler
+          run-id: ${{ inputs.matrix_run_id }}
+          github-token: ${{ steps.artifact-token.outputs.token }}
+          name: nuget-pilot-packages-ubuntu-24.04
+          path: candidates
+      - name: Freeze the reviewed package and approval manifest
+        id: plan
+        run: >-
+          python eng/nuget_pilot_release.py prepare
+          --run matrix-run.json --matrix evidence/pilot-matrix.json
+          --packages candidates --repository . --output promotion
+      - uses: actions/upload-artifact@v6
+        with:
+          name: pilot-promotion
+          path: promotion/
+          if-no-files-found: error
+
+  promote:
+    name: Promote ${{ needs.prepare.outputs.version }} (${{ needs.prepare.outputs.manifest_sha256 }})
+    needs: prepare
+    environment: nuget-release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v7
+        with:
+          name: pilot-promotion
+          path: promotion
+      - uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ secrets.NUGET_USER }}
+      - name: Promote and verify the exact public package
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+          MANIFEST_SHA: ${{ needs.prepare.outputs.manifest_sha256 }}
+        shell: bash
+        run: >-
+          python eng/nuget_pilot_release.py publish
+          --artifact promotion --repository . --state release-state.json
+          --expected-sha "$MANIFEST_SHA"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: pilot-release-state-${{ github.run_attempt }}
+          path: release-state.json
+          if-no-files-found: warn
+
+  tag:
+    name: Record the verified preview
+    needs: [prepare, promote]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Record the source commit in the producer's version history
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          SOURCE_COMMIT: ${{ needs.prepare.outputs.producer_commit }}
+        shell: bash
+        run: |
+          tag="v$VERSION"
+          if git show-ref --verify --quiet "refs/tags/$tag"; then
+            [[ "$(git rev-parse "refs/tags/$tag^{commit}")" == "$SOURCE_COMMIT" ]]
+          else
+            git -c user.name='github-actions[bot]' \
+                -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+                tag -a "$tag" "$SOURCE_COMMIT" -m "Broiler.DateTime $VERSION"
+            git push origin "refs/tags/$tag"
+          fi

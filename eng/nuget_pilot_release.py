@@ -223,7 +223,7 @@ class PublicFeed:
     def push(self, package):
         key = os.environ.get("NUGET_API_KEY")
         if not key:
-            raise ValueError("NuGet Trusted Publishing did not provide a short-lived key")
+            raise ValueError("Configure the NUGET_TOKEN Actions secret for DateTime publication")
         suffix = package["version"].split("-", 1)[1]
         with TemporaryDirectory() as temp:
             version_output = Path(temp) / "version.txt"

@@ -81,9 +81,6 @@ jobs:
     environment: nuget-release
     runs-on: ubuntu-24.04
     timeout-minutes: 14
-    permissions:
-      contents: read
-      id-token: write
     steps:
       - uses: actions/checkout@v5
         with:
@@ -102,13 +99,9 @@ jobs:
         with:
           name: pilot-promotion
           path: promotion
-      - uses: NuGet/login@v1
-        id: login
-        with:
-          user: ${{ secrets.NUGET_USER }}
       - name: Promote and verify the exact public package
         env:
-          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+          NUGET_API_KEY: ${{ secrets.NUGET_TOKEN }}
           MANIFEST_SHA: ${{ needs.prepare.outputs.manifest_sha256 }}
         shell: bash
         run: >-
